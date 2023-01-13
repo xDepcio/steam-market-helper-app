@@ -8,10 +8,10 @@ import requests
 import openpyxl
 import json
 from seleniumwire.utils import decode
-from utils import scrape_reqs_for_graphs
+from utils import scrape_reqs_for_inv_cards
 
 
-class App:
+class SellApp:
     def __init__(self):
         chrome_options = Options()
         chrome_options.add_experimental_option("detach", True)
@@ -20,9 +20,6 @@ class App:
 
         self.driver = driver
         self.offset = 0
-        # sleep(3)
-        # self.get_price_data_by_item_nameid(1)
-        # return
 
     def login(self):
         login_field = self._look_for_ele(By.XPATH, '/html/body/div[1]/div[7]/div[4]/div[1]/div[1]/div/div/div/div[2]/div/form/div[1]/input')
@@ -32,7 +29,11 @@ class App:
         login_btn = self._look_for_ele(By.XPATH, '/html/body/div[1]/div[7]/div[4]/div[1]/div[1]/div/div/div/div[2]/div/form/div[4]/button')
         login_btn.click()
         eq_btn = self._look_for_ele(By.XPATH, '/html/body/div[1]/div[7]/div[6]/div[1]/div[3]/div/div[1]/div[2]/div[3]/div[2]/a/span[1]')
-        self.driver.get('https://steamcommunity.com/market/listings/753/1245620-Site%20of%20Lost%20Grace')
+        self.driver.get('https://steamcommunity.com/profiles/76561198462126877/inventory/#753')
+
+    def get_cards(self):
+        sleep(2)
+        scrape_reqs_for_inv_cards(self.driver)
 
     def _look_for_ele(self, by, value):
         ele = None
@@ -163,11 +164,10 @@ class App:
 
 
 def main():
-    app = App()
+    app = SellApp()
     app.login()
+    app.get_cards()
 
-    for url in cfg.FOLLOWED_CARDS_URLS:
-        app.draw_data_for_item('data.xlsx', url)
 
 
 if __name__ == '__main__':

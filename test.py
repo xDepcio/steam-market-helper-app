@@ -1,5 +1,2 @@
-try:
-    2 / 0
-    print('ds')
-except Exception as e:
-    print(e)
+var = None or 27
+print(var)
