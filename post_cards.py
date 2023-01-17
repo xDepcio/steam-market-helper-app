@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from config import Config as cfg
 from time import sleep
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.common.exceptions import ElementNotInteractableException
 import requests
 import openpyxl
 import json
@@ -11,7 +12,7 @@ from seleniumwire.utils import decode
 from utils import scrape_reqs_for_inv_cards, scrape_reqs_for_graphs
 
 
-class SellApp:
+class PostSellApp:
     def __init__(self):
         chrome_options = Options()
         chrome_options.add_experimental_option("detach", True)
@@ -30,6 +31,80 @@ class SellApp:
         login_btn.click()
         eq_btn = self._look_for_ele(By.XPATH, '/html/body/div[1]/div[7]/div[6]/div[1]/div[3]/div/div[1]/div[2]/div[3]/div[2]/a/span[1]')
         self.driver.get('https://steamcommunity.com/profiles/76561198462126877/inventory/#753')
+
+    def get_cards(self, sell_prices):
+        card_eles = self.driver.find_elements(By.CLASS_NAME, 'itemHolder')
+        for ele in card_eles:
+            try:
+                ele.click()
+                sleep(1)
+            except ElementNotInteractableException:
+                self.driver.execute_script('return InventoryNextPage()')
+                sleep(1)
+                ele.click()
+            card_name = self.driver.execute_script('return g_ActiveInventory.selectedItem.description.name')
+            if card_name in sell_prices:
+                asset = self.driver.execute_script('return g_ActiveInventory.selectedItem.assetid')
+                print('IS IN', asset)
+                self.post_sell_request(1)
+            else:
+                print('IS NOT IN')
+        # print(card_eles)
+
+    def post_sell_request(self, price):
+        asset_id = self.driver.execute_script('return g_ActiveInventory.selectedItem.assetid')
+        app_id = self.driver.execute_script('return g_ActiveInventory.selectedItem.appid')
+        context_id = self.driver.execute_script('return g_ActiveInventory.selectedItem.contextid')
+        session_id = self.driver.execute_script('return g_sessionID')
+        connected_body_str = f"sessionid={session_id}&appid={app_id}&contextid={context_id}&assetid={asset_id}&amount=1&price=88"
+
+        # promise = self.driver.execute_async_script("""
+        #     fetch("https://steamcommunity.com/market/sellitem/", {
+        #     "headers": {
+        #     "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
+        #     }
+        #     "body": "dfasd=dasd"
+        #     "method": "POST"
+        #     });
+        #     """)
+        promise = self.driver.execute_async_script("""
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    resolve('Hello World!');
+                }, 1000);
+            });
+        """)
+
+
+        async def handle_promise(promise):
+            result = await promise
+            print(result)
+
+        handle_promise(promise)
+
+
+        #     headers={
+        #     "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        # }, url="https://steamcommunity.com/market/sellitem/", data=connected_body_str)
+
+        # print(response.status_code)
+
+
+    def get_sell_prices(self, path):
+        workbook = openpyxl.load_workbook(path)
+        worksheet = workbook.active
+        cards_prices = {}
+
+        while True:
+            card_name = worksheet.cell(2+self.offset, 1).value
+            sell_price = worksheet.cell(10+self.offset, 10).value
+            if card_name is None:
+                break
+            cards_prices[card_name] = sell_price
+            self.offset += 11
+
+        return cards_prices
+
 
     def _look_for_ele(self, by, value):
         ele = None
@@ -164,12 +239,13 @@ class SellApp:
 
 
 def main():
-    app = SellApp()
+    app = PostSellApp()
     app.login()
-    sleep(2)
-    urls = scrape_reqs_for_inv_cards(app.driver)
-    for url in urls:
-        app.draw_data_for_item('inv_data.xlsx', url)
+
+    sell_prices = app.get_sell_prices('inv_data.xlsx')
+    print(sell_prices)
+
+    app.get_cards(sell_prices)
 
 
 

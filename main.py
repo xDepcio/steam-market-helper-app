@@ -68,7 +68,7 @@ class App:
 
     def draw_data_for_item(self, path, item_url):
         item_id = self.get_itemname_id(item_url)
-        sleep(3)
+        sleep(0.5)
         sell, buy = scrape_reqs_for_graphs(self.driver, item_id)
         card_name = self.get_card_name()
         game_name = self.get_game_name()

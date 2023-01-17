@@ -55,39 +55,18 @@ def scrape_reqs_for_inv_cards(driver):
                 str_body = str_body.split('],"descriptions":')[1]
                 str_body = str_body.split(',"more_items":')[0]
 
-                hashes = str_body.split('market_hash_name":"')[1:]
-                data = [hash_.split('",')[0] for hash_ in hashes]
-                print(data)
+                hashes = str_body.split('type":"')[1:]
+                data = [hash_.split('","market_fee_app')[0] for hash_ in hashes]
+                new_data = [entry for entry in data if 'Karta kolekcjonerska' in entry]
+
+                hashes_names = [ele.split('hash_name":"')[1] for ele in new_data]
+
+                urls = [
+                    f"https://steamcommunity.com/market/listings/753/{ele}" for ele in hashes_names
+                ]
+
+                print(hashes_names)
+                print(urls)
                 with open('data.txt', 'w') as fh:
                     fh.write(str_body)
-                return
-                str_charts = str_body.split('buy_order_graph')[1]
-                buy_part, sell_part = str_charts.split('sell_order_graph')
-
-                entires_buy = buy_part.split('],[')
-                entires_buy_foramtted = []
-                accum = 0
-                for entry in entires_buy:
-                    price, amount = entry.split(',')[:2]
-                    price = price.strip('":[')
-                    price = float(price)
-                    amount = int(amount)
-                    amount = amount - accum
-                    accum += amount
-
-                    entires_buy_foramtted.append([price, amount])
-
-                entires_sell = sell_part.split('],[')
-                entires_sell_foramtted = []
-                accum = 0
-                for entry in entires_sell:
-                    price, amount = entry.split(',')[:2]
-                    price = price.strip('":[')
-                    price = float(price)
-                    amount = int(amount)
-                    amount = amount - accum
-                    accum += amount
-
-                    entires_sell_foramtted.append([price, amount])
-
-                return entires_sell_foramtted, entires_buy_foramtted
+                return urls
