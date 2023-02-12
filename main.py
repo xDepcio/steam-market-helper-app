@@ -8,7 +8,7 @@ import requests
 import openpyxl
 import json
 from seleniumwire.utils import decode
-from utils import scrape_reqs_for_graphs
+from utils import scrape_reqs_for_graphs, load_urls
 
 
 class App:
@@ -66,10 +66,23 @@ class App:
         game_name = game_ele.text
         return game_name
 
+    def get_card_amount(self):
+        """returns total sell orders on market"""
+        try:
+            total = self.driver.find_element(By.XPATH, '/html/body/div[1]/div[7]/div[2]/div[1]/div[4]/div/div[2]/div/div[4]/div[4]/div[1]/div/div[1]/div/span[1]').text
+        except Exception:
+            return 0
+        return int(total)
+
     def draw_data_for_item(self, path, item_url):
         item_id = self.get_itemname_id(item_url)
         sleep(0.5)
-        sell, buy = scrape_reqs_for_graphs(self.driver, item_id)
+        card_amount = self.get_card_amount()
+        if card_amount == 0: return
+        try:
+            sell, buy = scrape_reqs_for_graphs(self.driver, item_id)
+        except Exception:
+            return
         card_name = self.get_card_name()
         game_name = self.get_game_name()
         # card_volume = self.get_card_volume()
@@ -78,21 +91,28 @@ class App:
         workbook = openpyxl.load_workbook(path)
         worksheet = workbook.active
 
-        self._draw_static_data(worksheet, card_name, game_name, card_volume)
+        self._draw_static_data(worksheet, card_name, game_name, card_volume, card_amount, item_url)
         self._draw_fetched_prices(worksheet, sell, buy)
         self._draw_margins(worksheet, sell, buy, 0, 0)
         self._draw_margins(worksheet, sell, buy, 5, 1)
-        self._draw_margins(worksheet, sell, buy, 10, 2)
-        self.offset += 11
+        profit = self._draw_margins(worksheet, sell, buy, 10, 2)
+
+        print(profit, profit > 0.01)
+        print(card_amount, card_amount > 200)
+        if profit >= 0.02 and card_amount > 500:
+            print('YESSSSIR')
+            self.offset += 12
 
         workbook.save('data.xlsx')
 
     def _draw_margins(self, worksheet, sell, buy, ignore_num, n_entry):
+        highest_buy = 0
         for price, amount in buy:
             if amount > ignore_num:
                 highest_buy = price
                 break
 
+        lowest_sell = 0
         for price, amount in sell:
             if amount > ignore_num:
                 lowest_sell = price
@@ -112,6 +132,9 @@ class App:
         worksheet.cell(5+n_entry+self.offset, 9).value = bought_for
         worksheet.cell(5+n_entry+self.offset, 10).value = profit
 
+        print('T', profit, float(profit))
+        return float(profit)
+
     def _draw_fetched_prices(self, worksheet, sell, buy):
         i = 4
         for price, count in sell[:7]:
@@ -127,7 +150,7 @@ class App:
             worksheet.cell(i+self.offset, 5).value = count
             i += 1
 
-    def _draw_static_data(self, worksheet, card_name, game_name, card_volume):
+    def _draw_static_data(self, worksheet, card_name, game_name, card_volume, card_amount, card_url):
         """Draw headers, merge cells..."""
         worksheet.cell(1+self.offset, 1).value = game_name
         worksheet.cell(2+self.offset, 1).value = card_name
@@ -150,6 +173,10 @@ class App:
         worksheet.cell(10+self.offset, 8).value = card_volume
         worksheet.merge_cells(start_row=11+self.offset, start_column=1, end_row=11+self.offset, end_column=10)
 
+        worksheet.cell(10+self.offset, 9).value = 'Total sell offers:'
+        worksheet.cell(10+self.offset, 10).value = card_amount
+        worksheet.cell(11+self.offset, 1).value = card_url
+
 
     def get_card_volume(self):
         """On card page get card 24h volume"""
@@ -166,7 +193,10 @@ def main():
     app = App()
     app.login()
 
-    for url in cfg.FOLLOWED_CARDS_URLS:
+    urls = cfg.FOLLOWED_CARDS_URLS
+    urls = load_urls('links.json')
+
+    for url in urls:
         app.draw_data_for_item('data.xlsx', url)
 
 

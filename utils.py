@@ -1,4 +1,5 @@
 from seleniumwire.utils import decode
+import json
 
 
 def scrape_reqs_for_graphs(driver, item_id):
@@ -70,3 +71,17 @@ def scrape_reqs_for_inv_cards(driver):
                 with open('data.txt', 'w') as fh:
                     fh.write(str_body)
                 return urls
+
+
+def load_urls(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return data['links']
+
+
+def get_sell_price(sell_arr, ignore_prev_count):
+    total_prev = 0
+    for price, amount in sell_arr:
+        total_prev += amount
+        if total_prev >= ignore_prev_count:
+            return price

@@ -62,7 +62,9 @@ class UrlsScrapper:
             json.dump(data, f, indent=4)
 
     def is_new_url(self, url) -> bool:
-        return url in self.curr_urls
+        res = url not in self.curr_urls
+        print(res)
+        return url not in self.curr_urls
 
     def add_url_to_current_urls(self, url):
         self.curr_urls.add(url)
@@ -73,8 +75,7 @@ class UrlsScrapper:
         for ele in urls_eles:
             try:
                 href = ele.get_attribute('href')
-                print(href)
-                urls_eles.append(href)
+                urls_arr.append(href)
             except Exception:
                 pass
         return urls_arr
@@ -82,18 +83,16 @@ class UrlsScrapper:
 
 def main():
     app = UrlsScrapper('links.json')
-
     page = 1
     while True:
         on_page_urls = app.get_curr_page_urls()
-        new_urls = filter(lambda url: app.is_new_url(url), on_page_urls)
+        new_urls = list(filter(lambda url: app.is_new_url(url), on_page_urls))
         for url in new_urls:
             app.add_url_to_current_urls(url)
         app.save_urls(new_urls)
         page += 1
+        sleep(1)
         app.set_page(page)
-
-
 
 
 if __name__ == '__main__':
